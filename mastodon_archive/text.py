@@ -29,11 +29,12 @@ def text(args):
     collection = args.collection
     reverse = args.reverse
     patterns = args.pattern
+    combine = args.combine
 
     (username, domain) = core.parse(args.user)
 
     status_file = domain + '.user.' + username + '.json'
-    data = core.load(status_file, required = True, quiet = True)
+    data = core.load(status_file, required=True, quiet=True, combine=combine)
 
     def matches(status):
         if status["reblog"] is not None:
@@ -61,8 +62,7 @@ def text(args):
     if len(patterns) > 0:
         statuses = list(filter(matches, statuses))
 
-    if reverse:
-        statuses = reversed(statuses)
+    statuses = sorted(statuses, reverse=reverse, key=lambda status: status["created_at"])
 
     for status in statuses:
         str = '';
