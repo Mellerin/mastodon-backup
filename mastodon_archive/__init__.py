@@ -29,25 +29,33 @@ from . import whitelist
 from . import mutuals
 from . import login
 from . import fix
+from . import meow
 
 def main():
     parser = argparse.ArgumentParser(
-        description="""Archive your toots and favourites,
+        description="""Archive your toots, favourites and bookmarks,
         and work with them.""",
         epilog="""Once you have created archives in the current directory, you can
         use 'all' instead of your account and the commands will be run
         once for every archive in the directory.""")
+
+    parser.add_argument("--quiet", "-q", action='store_true', default=False,
+                        help='do not output normal status messages')
 
     subparsers = parser.add_subparsers()
 
 
     parser_content = subparsers.add_parser(
         name='archive',
-        help='archive your toots and favourites')
+        help='archive your toots, favourites and bookmarks')
     parser_content.add_argument("--no-favourites", dest='skip_favourites',
                                 action='store_const',
                                 const=True, default=False,
                                 help='skip download of favourites')
+    parser_content.add_argument("--no-bookmarks", dest='skip_bookmarks',
+                                action='store_const',
+                                const=True, default=False,
+                                help='skip download of bookmarks')
     parser_content.add_argument("--with-mentions", dest='with_mentions',
                                 action='store_const',
                                 const=True, default=False,
@@ -60,6 +68,14 @@ def main():
                                 action='store_const',
                                 const=True, default=False,
                                 help='download following (the people you follow)')
+    parser_content.add_argument("--with-mutes", action='store_true',
+                                default=False, help='download people you muted')
+    parser_content.add_argument("--with-blocks", action='store_true',
+                                default=False, help='download people you blocked')
+    parser_content.add_argument("--with-notes", action='store_true',
+                                default=False, help='download private notes '
+                                'for any followers, follows, mutes, and/or '
+                                'blocks that have been downloaded')
     parser_content.add_argument("--no-stopping", dest='stopping',
                                 action='store_const',
                                 const=False, default=True,
@@ -92,12 +108,15 @@ def main():
                                 action="store_true",
                                 help="combine archives in case they are split")
     parser_content.add_argument("--collection", dest='collection',
-                                choices=['statuses', 'favourites'],
+                                choices=['statuses', 'favourites', 'bookmarks'],
                                 default='statuses',
-                                help='export statuses or favourites')
+                                help='export statuses, favourites or bookmarks')
     parser_content.add_argument("--pace", dest='pace', action='store_const',
                                 const=True, default=False,
                                 help='avoid timeouts and pace requests')
+    parser_content.add_argument("--suppress-errors", action='store_true',
+                                default=False, help="don't print messages "
+                                "about media that can't be downloaded")
     parser_content.set_defaults(command=media.media)
 
 
@@ -111,9 +130,9 @@ def main():
                                 action="store_true",
                                 help="combine archives in case they are split")
     parser_content.add_argument("--collection", dest='collection',
-                                choices=['statuses', 'favourites', 'mentions', 'all'],
+                                choices=['statuses', 'favourites', 'bookmarks', 'mentions', 'all'],
                                 default='statuses',
-                                help='export statuses, favourites, or mentions')
+                                help='export statuses, favourites, bookmarks or mentions')
     parser_content.add_argument("user",
                                 help='your account, e.g. kensanata@octogon.social')
     parser_content.add_argument("pattern", nargs='*',
@@ -138,9 +157,9 @@ def main():
                                 action="store_true",
                                 help="combine archives in case they are split")
     parser_content.add_argument("--collection", dest='collection',
-                                choices=['statuses', 'favourites'],
+                                choices=['statuses', 'favourites', 'bookmarks'],
                                 default='statuses',
-                                help='export statuses or favourites')
+                                help='export statuses favourites or bookmarks')
     parser_content.add_argument("--toots-per-page", dest='toots',
                                 metavar='N', type=int, default=2000,
                                 help='how many toots per HTML page')
@@ -202,7 +221,7 @@ def main():
 
     parser_content = subparsers.add_parser(
         name='report',
-        help='''report some numbers about your toots and favourites''')
+        help='''report some numbers about your toots, favourites and bookmarks''')
     parser_content.add_argument("--combine",
                                 action="store_true",
                                 help="combine archives in case they are split")
@@ -228,19 +247,19 @@ def main():
 
     parser_content = subparsers.add_parser(
         name='followers',
-        help='''find followers who never mention you''')
+        help='''show followers''')
+    parser_content.add_argument("--no-mentions", dest='mentions', action='store_const',
+                                const=False, default=True,
+                                help='Limit to followers that do not mention you')
     parser_content.add_argument("--block", dest='block', action='store_const',
                                 const=True, default=False,
                                 help='...and block them')
     parser_content.add_argument("--all", dest='all', action='store_const',
                                 const=True, default=False,
-                                help='consider all toots (ignore --newer-than)')
+                                help='consider all toots (ignore --newer-than) when looking for interactions')
     parser_content.add_argument("--newer-than", dest='weeks',
                                 metavar='N', type=int, default=12,
                                 help='require interaction within this many weeks (default is 12)')
-    parser_content.add_argument("--pace", dest='pace', action='store_const',
-                                const=True, default=False,
-                                help='avoid timeouts and pace requests')
     parser_content.add_argument("user",
                                 help='your account, e.g. kensanata@octogon.social')
     parser_content.set_defaults(command=followers.followers)
@@ -303,6 +322,16 @@ def main():
     parser_content.add_argument("user",
                                 help='your account, e.g. kensanata@octogon.social')
     parser_content.set_defaults(command=login.login)
+
+    parser_content = subparsers.add_parser(
+        name='meow',
+        help='import your backup into Meow, a browser-based export viewer (see https://purr.neocities.org/about/)')
+    parser_content.add_argument("user",
+                                help='your account, e.g. kensanata@octogon.social')
+    parser_content.add_argument("--combine",
+                                action="store_true",
+                                help="combine archives in case they are split")
+    parser_content.set_defaults(command=meow.meow)
 
 
     args = parser.parse_args()

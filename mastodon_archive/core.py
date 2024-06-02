@@ -22,6 +22,21 @@ import glob
 import re
 import shutil
 
+def progress_bar(chars="▏▎▍▌▋▊▉█"):
+    """
+    Return a progress bar updater which you can then call.
+    """
+    n = 0
+    def progress():
+        nonlocal n
+        if n != 0:
+            sys.stdout.write("\b")
+        sys.stdout.write(chars[n])
+        sys.stdout.flush()
+        n = (n + 1) % len(chars)
+
+    return progress
+
 def parse(account):
     """
     Parse account into username and domain.
@@ -244,14 +259,22 @@ def load(file_name, required=False, quiet=False, combine=False):
             for archive in archives:
                 archived_data = _json_load(archive)
 
-                for collection in ["statuses", "favourites", "mentions"]:
-                    data[collection].extend(archived_data[collection])
+                for collection in ["statuses", "favourites", "bookmarks", "mentions"]:
+                    if collection in archived_data:
+                        data[collection].extend(archived_data[collection])
+
+        # Bookmarks are a recent addition so older archives don't have any
+        if "bookmarks" not in data:
+            data["bookmarks"] = []
+
+        # Sort statuses
+        data["statuses"].sort(key=lambda x: x["created_at"], reverse=True)
 
         return data
 
     return None
 
-def save(file_name, data):
+def save(file_name, data, quiet=False):
     """
     Save the JSON data in a file. If the file exists, rename it,
     just in case.
@@ -263,7 +286,8 @@ def save(file_name, data):
 
     if os.path.isfile(file_name):
         backup_file = file_name + '~'
-        print("Backing up", file_name, "to", backup_file)
+        if not quiet:
+            print("Backing up", file_name, "to", backup_file)
         if os.path.isfile(backup_file):
             ans = ""
             while ans.lower() not in ("y", "n", "yes", "no"):
